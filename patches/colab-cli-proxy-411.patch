@@ -1,0 +1,16 @@
+--- a/colab_cli/client.py
++++ b/colab_cli/client.py
+@@ -226,6 +226,13 @@
+         self.logger.debug(f"Request: {method} {endpoint}")
+         self.logger.debug(f"Params: {params}")
+ 
++        # Workaround for proxies that strip "Content-Length: 0" from
++        # body-less POSTs (Google's frontend then replies 411 Length
++        # Required): give empty POSTs a minimal "{}" body so a real
++        # Content-Length survives the proxy.
++        if method == "POST" and "data" not in kwargs and "json" not in kwargs:
++            kwargs["data"] = b"{}"
++
+         response = self.session.request(
+             method, endpoint, headers=request_headers, params=params, **kwargs
+         )

@@ -1,0 +1,13 @@
+--- a/colab_cli/commands/automation.py
++++ b/colab_cli/commands/automation.py
+@@ -214,7 +214,9 @@
+     from colab_cli.common import state
+ 
+     name = state.resolve_session(session)
+-    code = f"from google.colab import drive\ndrive.mount('{path}')"
++    # Local patch: default mount timeout (120s) is shorter than a realistic
++    # human link-click round-trip; the automation execute timeout is 600s.
++    code = f"from google.colab import drive\ndrive.mount('{path}', timeout_ms=600000)"
+     typer.echo(f"[colab] Mounting Google Drive to '{path}' on {name}...")
+     run_automation(
+         name,

@@ -1,0 +1,7 @@
+venv/
+pkg/
+out/
+tools/
+__pycache__/
+*.7z
+*.log
