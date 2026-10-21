@@ -1,0 +1,68 @@
+# ChickenRice 路线（本分支）
+
+在 Google Colab（colab CLI）上运行 [TransWithAI/Faster-Whisper-TransWithAI-ChickenRice](https://github.com/TransWithAI/Faster-Whisper-TransWithAI-ChickenRice) 的两个版本，与主线（main 分支）的 Purfview Faster-Whisper-XXL 路线做同片对比。
+
+- **翻译版**：海南鸡 v2 模型（`chickenrice0721/whisper-large-v2-translate-zh-v0.2-st-ct2`，large-v2 经 5000 小时日中数据微调），task=translate，**直接输出中文字幕**。
+- **转录版**：日文转录模型（`TransWithAI/whisper-ja-1.5B-ct2`，源自 efwkjn/whisper-ja-1.5B），task=transcribe，输出日文字幕。
+- 两版共用其**音声优化 VAD**（`TransWithAI/Whisper-Vad-EncDec-ASMR-onnx`，ONNX）+ 智能分块（≤30s/块）+ segment_merge 后处理，全部使用仓库 `generation_config.json5` 的出厂配置。
+
+## 文件
+
+| 文件 | 作用 |
+|---|---|
+| `cr_setup.py` | 在 Colab VM 内执行：克隆 ChickenRice 仓库、装依赖、下 VAD 与两个模型（各约 3.1GB）、按 `INPUT_URL` 环境变量下载视频 |
+| `cr_launch.py` | 按 `TASK=translate\|transcribe` 环境变量脱钩启动 infer.py 后台进程，日志/标记在 `/content/out_<task>/` |
+| `cr_poll.py` | 查看后台任务状态、日志尾部与产物 |
+| `compare.py` | 本地三方字幕量化对比工具（条数、时间轴覆盖、缺陷计数、指定时间窗抽查、关键术语计数） |
+
+## Colab 快速开始
+
+```bash
+colab new -s purfview --gpu T4
+# setup（约 2-4 分钟；INPUT_URL 为视频直链，可选）
+colab exec -s purfview --timeout 3600 --env "INPUT_URL=https://example.com/video.mp4" -f chickenrice/cr_setup.py
+# 依次跑两个任务（不要并行，显存与 CPU VAD 都会打架）
+colab exec -s purfview --timeout 120 --env "TASK=translate"  -f chickenrice/cr_launch.py
+colab exec -s purfview --timeout 120 --env "TASK=transcribe" -f chickenrice/cr_launch.py
+# 轮询（把 TASK 换成对应任务），出现 STATUS DONE 后下载
+colab exec -s purfview --timeout 120 --env "TASK=translate" -f chickenrice/cr_poll.py
+colab download -s purfview /content/out_translate/114820.srt  out-zh.srt
+colab download -s purfview /content/out_transcribe/114820.srt out-ja.srt
+colab stop -s purfview
+```
+
+注：本路线不需要挂载 Google Drive（模型从 HuggingFace 现下、产物直接回传），省去每台新 VM 的 Drive 授权点击。
+
+## 环境坑（2026-10 实测，Colab 当前镜像）
+
+1. **PyAV 版本不兼容**：pip 最新 av 与 faster-whisper 冲突，`decode_audio` 报 `TypeError: open() got an unexpected keyword argument 'metadata_errors'`。`cr_setup.py` 已钉 `av==13.1.0`。
+2. **libcublas.so.12 找不到**：Colab 镜像已是 CUDA 13（torch 2.11+cu130），CTTranslate2 的 CUDA 12 构建找不到 `libcublas.so.12`（pip 的 nvidia-cublas-cu12 装了但不在加载路径）。`cr_launch.py` 的 worker 已自动把 `dist-packages/nvidia/*/lib` 加进 `LD_LIBRARY_PATH`。
+3. **VAD 进度是 `\r` 回车刷新的**：看日志要用 `tr '\r' '\n'` 转换，否则 tail/grep 会整段刷屏或误判。
+4. **完成标记别信残留**：`cr_launch.py` 启动前会清掉旧的 DONE/FAILED（已内置）；判断完成以「DONE 标记 + SRT 存在 + 日志 exit: 0」三证为准。
+5. VM 内会出现 `HF_TOKEN secret timed out` 警告——模型都是公开仓库，无视即可。
+
+## 实测数据（测试片 1:38:13，T4，免费层）
+
+| 阶段 | 耗时 |
+|---|---|
+| setup（克隆+依赖+6.2GB 模型+视频） | 约 2-4 分钟 |
+| 外层 VAD（CPU，196 块扫描） | 约 9 分钟/任务 |
+| 智能分块生成（217 块逐块串行） | 约 26 分钟/任务 |
+| **单任务合计** | **约 35 分钟** |
+
+其 VAD 检出语音占比 38.4%（37分37秒）。等值消耗：含两次崩溃重试的整会话约 78 分钟 ≈ 1.39 CU（免费层不实际扣费，速率为 T4 1.07 CU/小时）。
+
+## 三方质量对比（同一视频）
+
+| | Purfview XXL（main 路线） | ChickenRice 转录版 | ChickenRice 翻译版 |
+|---|---|---|---|
+| 条数 | 769 | 855 | 728 |
+| 时间轴覆盖 | 19.1% | 44.8% | 55.9% |
+| 0 时长条 / <0.8s 碎条 | 6 / 230 | 0 / 56 | 0 / 1 |
+| >12s 长条 | 1（51.8s） | 23 | 62 |
+| 耗时 | 约 5 分钟 | 约 35 分钟 | 约 35 分钟 |
+
+- **术语准确率**：转录版碾压 Purfview 的系统性错词——マンコ:マンゴー = 8:2（XXL 为 0:21）、中出し:仲出し = 6:2、「精神→精子」误认 0 次、「寝てる」串扰基本消失、お掃除フェラ 写对。日文微调模型 + 细 VAD 的组合在对白准确率上确实更强。
+- **幻觉**：XXL 在安静段出现整段虚构（「犬が心臓の筋肉を使って醫院へ行きます」）；转录版同位置为场景内碎片，无整段幻觉；翻译版无虚构剧情，但呻吟段会出现拟声词刷屏（如 `biu biu`）。
+- **翻译版**：中文直出、对白流畅、术语地道，可作独立成品；缺点是人名偶串味（「小栗みそお」）、合并长句多（62 条 >12s）、无日文对照可核。
+- **结论**：要日文原稿质量 → 转录版（慢 7 倍）；要速度与批量 → XXL 路线 + 错词词典修正；翻译版适合快速看懂剧情，或与 XXL 日文稿交叉校验错漏（本次它把 XXL 听错的几处全翻对了）。
