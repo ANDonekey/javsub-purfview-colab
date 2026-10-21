@@ -6,6 +6,20 @@
 [#464](https://github.com/meizhong986/WhisperJAV/issues/464) 的三方实测对比结论：
 XXL large-v2 在日语（JAV）素材上准确率与稳定性最好。
 
+## 分支说明
+
+本仓库有两条技术路线，分别维护在两个分支上（同一测试视频做过三方对比）：
+
+| 分支 | 路线 | 模型 | 输出 | 耗时（1:38 视频，T4） |
+|---|---|---|---|---|
+| `main`（默认） | Purfview Faster-Whisper-XXL | large-v2 原版 | 日文字幕 | 转写约 5 分钟 |
+| `chickenrice` | TransWithAI ChickenRice | 转录版 whisper-ja-1.5B / 翻译版 海南鸡 v2 | 日文字幕 / **中文直出** | 约 25~35 分钟/任务 |
+
+- **main**：就是本页介绍的 XXL 路线。速度最快；代价是日文稿有系统性同音错词（如 マンコ→マンゴー，可词典修正），安静段偶有整段幻觉。
+- **chickenrice**：在 main 全部内容之外多一个 `chickenrice/` 目录（脚本、说明与完整对比数据）。日文微调模型的术语准确率明显更高、无整段幻觉，翻译版还能跳过后翻直接出中文；代价是慢约 5~7 倍（逐块生成）。细节见该分支的 `chickenrice/README.md`。
+
+选哪条：量大求快用 main；单片求准、或想要中文直出，用 chickenrice。切换分支：GitHub 页面左上角分支下拉，或 `git checkout chickenrice`。
+
 ## 为什么是这个组合
 
 - **Purfview XXL 赢在预设，不只是模型**：它的粗 VAD 长段（3 秒静音才切、0.9 秒留白、
