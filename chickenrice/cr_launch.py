@@ -3,8 +3,9 @@
 import os, subprocess, textwrap
 os.environ.setdefault("MPLBACKEND", "Agg")
 TASK = os.environ.get("TASK", "translate")
-MODEL = {"translate": "hainanji", "transcribe": "ja15b"}[TASK]
-OUT = f"/content/out_{TASK}"
+MODEL = os.environ.get("MODEL", {"translate": "hainanji", "transcribe": "ja15b"}[TASK])
+TAG = os.environ.get("TAG", "")
+OUT = f"/content/out_{TASK}" + (f"_{TAG}" if TAG else "")
 os.makedirs(OUT, exist_ok=True)
 for stale in ("DONE", "FAILED"):
     p = os.path.join(OUT, stale)
