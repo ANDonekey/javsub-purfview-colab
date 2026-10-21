@@ -40,13 +40,14 @@ colab stop -s purfview
 3. **VAD 进度是 `\r` 回车刷新的**：看日志要用 `tr '\r' '\n'` 转换，否则 tail/grep 会整段刷屏或误判。
 4. **完成标记别信残留**：`cr_launch.py` 启动前会清掉旧的 DONE/FAILED（已内置）；判断完成以「DONE 标记 + SRT 存在 + 日志 exit: 0」三证为准。
 5. VM 内会出现 `HF_TOKEN secret timed out` 警告——模型都是公开仓库，无视即可。
+6. **onnxruntime 必须用 GPU 版且钉版本**：装 CPU 版 `onnxruntime` 时 VAD 只能跑 CPU（外层 VAD 约 9 分钟）。换 `onnxruntime-gpu` 后 VAD 可走 GPU，但**最新版（1.31，CUDA 13 构建）的 CUDA provider 在 Colab 镜像上一加载就段错误**，ORT 会静默回落 CPU、日志照常写 `on CPU`，极具迷惑性；`cr_setup.py` 已钉 `onnxruntime-gpu==1.22.0`（CUDA 12 构建，配合坑 2 的库路径可用）。验证方法：日志出现 `VAD Progress: ... on GPU (CUDA)`，外层 VAD 约 2 分钟（2026-10-22 实测）。
 
 ## 实测数据（测试片 1:38:13，T4，免费层）
 
 | 阶段 | 耗时 |
 |---|---|
 | setup（克隆+依赖+6.2GB 模型+视频） | 约 2-4 分钟 |
-| 外层 VAD（CPU，196 块扫描） | 约 9 分钟/任务 |
+| 外层 VAD（196 块扫描） | CPU 约 9 分钟/任务；GPU（onnxruntime-gpu==1.22.0）约 2 分钟/任务 |
 | 智能分块生成（217 块逐块串行） | 约 26 分钟/任务 |
 | **单任务合计** | **约 35 分钟** |
 

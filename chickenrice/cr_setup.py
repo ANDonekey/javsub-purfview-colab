@@ -1,5 +1,7 @@
 # 在 Colab 运行时里执行（colab exec -f cr_setup.py）
 # 职责：克隆 ChickenRice 仓库、装依赖、下 VAD + 两个模型、下载视频
+# 注意：onnxruntime-gpu 必须钉 1.22.0（CUDA 12 构建）——最新版（1.31，CUDA 13 构建）
+# 的 CUDA provider 在 Colab 镜像上一加载就段错误，VAD 会静默回落 CPU（2026-10-22 实测）
 import os, subprocess, sys
 os.environ.setdefault("MPLBACKEND", "Agg")
 
@@ -11,7 +13,8 @@ run("nvidia-smi -L")
 REPO = "/content/chickenrice"
 if not os.path.isdir(REPO):
     run(f"git clone -q --depth 1 https://github.com/TransWithAI/Faster-Whisper-TransWithAI-ChickenRice {REPO}")
-run(f"{sys.executable} -m pip install -q faster-whisper pyjson5 onnxruntime librosa 'av==13.1.0'")
+subprocess.run(f"{sys.executable} -m pip uninstall -y onnxruntime", shell=True)
+run(f"{sys.executable} -m pip install -q faster-whisper pyjson5 'onnxruntime-gpu==1.22.0' librosa 'av==13.1.0'")
 
 from huggingface_hub import hf_hub_download, snapshot_download
 os.makedirs(f"{REPO}/models", exist_ok=True)
