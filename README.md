@@ -67,6 +67,8 @@ cd javsub-purfview-colab
 INPUT_URL=https://example.com/video.mp4 ./run.sh
 ```
 
+> 输入也可以是**纯音频文件**（mp3/m4a/flac/wav 等）：XXL 只解音轨，本地路径或 `INPUT_URL` 直链给音频均可，文件小一个量级，识别质量无差别。
+
 **第一次运行**会从 GitHub 下载 XXL 包并在转写时下载模型（Colab 机房带宽，几分钟）。
 之后在挂着 Drive 的会话里跑一次 `sync_to_drive.py` 把包和模型播种到 Drive，
 后续会话就走 Drive 拷贝：

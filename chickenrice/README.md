@@ -33,6 +33,14 @@ colab stop -s purfview
 
 注：本路线不需要挂载 Google Drive（模型从 HuggingFace 现下、产物直接回传），省去每台新 VM 的 Drive 授权点击。
 
+### 直接喂音频
+
+引擎只用音轨（Whisper 内部统一重采样为 16kHz 单声道），**可以直接给音频文件**（mp3/m4a/flac/wav/aac 等），识别质量与喂视频无差别，文件却小一个量级——1.2GB 的视频抽成 128kbps 音频约 100MB（本地提取：`ffmpeg -i in.mp4 -vn -c:a copy out.m4a`）：
+
+- `INPUT_URL` 给音频直链即可，setup 会按原名存入 `/content/input/`；
+- 本地音频先 `colab upload -s purfview <文件> /content/input/`，多文件时用 `--env "INPUT_FILE=/content/input/xxx.m4a"` 写明；
+- 不指定 `INPUT_FILE` 时，`cr_launch.py` 自动取 `/content/input/` 里的第一个文件，后缀过滤随扩展名自动适配。
+
 ## 环境坑（2026-10 实测，Colab 当前镜像）
 
 1. **PyAV 版本不兼容**：pip 最新 av 与 faster-whisper 冲突，`decode_audio` 报 `TypeError: open() got an unexpected keyword argument 'metadata_errors'`。`cr_setup.py` 已钉 `av==13.1.0`。
