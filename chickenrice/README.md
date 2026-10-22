@@ -11,7 +11,7 @@
 | 文件 | 作用 |
 |---|---|
 | `cr_setup.py` | 在 Colab VM 内执行：克隆 ChickenRice 仓库、装依赖、下 VAD 与两个模型（各约 3.1GB）、按 `INPUT_URL` 环境变量下载视频 |
-| `cr_launch.py` | 按 `TASK=translate\|transcribe` 环境变量脱钩启动 infer.py 后台进程，日志/标记在 `/content/out_<task>/` |
+| `cr_launch.py` | 按 `TASK=translate\|transcribe` 环境变量脱钩启动 infer.py 后台进程，日志/标记在 `/content/out_<task>/`。输入文件可用 `INPUT_FILE` 指定（视频或音频均可，如 mp3/m4a/flac/wav），不指定时自动取 `/content/input/` 里的第一个文件；setup 脚本经 `INPUT_URL` 下载时按 URL 原名保存 |
 | `cr_poll.py` | 查看后台任务状态、日志尾部与产物 |
 | `compare.py` | 本地三方字幕量化对比工具（条数、时间轴覆盖、缺陷计数、指定时间窗抽查、关键术语计数） |
 

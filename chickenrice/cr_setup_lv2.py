@@ -30,7 +30,8 @@ assert sz > 2_900_000_000, "large-v2 model.bin too small"
 
 url = os.environ.get("INPUT_URL", "")
 os.makedirs("/content/input", exist_ok=True)
-dst = "/content/input/114820.mp4"
+_name = url.split("?")[0].rstrip("/").split("/")[-1] if url else ""
+dst = f"/content/input/{_name}" if _name and "." in _name else "/content/input/114820.mp4"
 if url and not os.path.exists(dst):
     run(f"curl -sL -o {dst} '{url}'")
 if os.path.exists(dst):
