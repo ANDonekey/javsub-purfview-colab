@@ -48,6 +48,23 @@ python3 chickenrice/pool_upload.py --stats               # 查池内总数
 
 规则与服务端一致并在本地先行过滤：仅 srt/ass/ssa、≤2MiB、合法 UTF-8、至少 1 个汉字、假名占比 >0.20 判为日文字幕跳过（双语稿也会被跳，池子只收纯中文成品）；番号从文件名提取（`ABC-123`、`FC2-1234567`、`abc123` 三种格式，提不到时用 `--code` 指定）；按内容 sha256 去重，台账在 `~/.chickenrice-pool-uploaded.json`。密钥只从环境变量或 `--key-file` 读，**不写进代码与仓库**；401/403 整批中止、429 停、410 跳过、5xx 重试 3 次。上传是显式动作，不随转录自动执行——介意公开分享就不要跑它。
 
+完整一条龙示例（视频直链 → C2 配置生成 → 上传，与根 README 同步）：
+
+```bash
+colab new -s purfview --gpu T4
+colab exec -s purfview --timeout 3600 \
+  --env "INPUT_URL=https://example.com/video/114842" \
+  -f chickenrice/cr_setup_hj_nosmart.py
+colab exec -s purfview --timeout 120 --env "TASK=translate" -f chickenrice/cr_launch.py
+colab exec -s purfview --timeout 120 --env "TASK=translate" -f chickenrice/cr_poll.py
+colab download -s purfview /content/out_translate/114842.srt ABF-395.zh.srt
+colab stop -s purfview
+POOL_UPLOAD_KEY=<上传密钥> python3 chickenrice/pool_upload.py ABF-395.zh.srt
+python3 chickenrice/pool_upload.py --stats
+```
+
+实录：番号 ABF-395、片长 2:14:25，生成约 8 分半，上传返回 HTTP 201 `created`，池内总数 +1。
+
 ### 直接喂音频
 
 引擎只用音轨（Whisper 内部统一重采样为 16kHz 单声道），**可以直接给音频文件**（mp3/m4a/flac/wav/aac 等），识别质量与喂视频无差别，文件却小一个量级——1.2GB 的视频抽成 128kbps 音频约 100MB（本地提取：`ffmpeg -i in.mp4 -vn -c:a copy out.m4a`）：

@@ -24,6 +24,32 @@ XXL large-v2 在日语（JAV）素材上准确率与稳定性最好。
 
 chickenrice 分支另带 `chickenrice/pool_upload.py`：把生成的**中文成品字幕**上传到公共字幕池 `chickenrice-subtitle-pool.jzdxjk.workers.dev`（与 subtitle-modal-web 同一接口），供他人按番号检索复用。特性：与服务端一致的本地预过滤（仅 srt/ass/ssa、≤2MiB、纯中文成品——日文字幕与双语稿都会跳过）、番号从文件名提取、按内容 sha256 去重（台账在本地，不重复传）、401/429/410/5xx 按接口规范处理。上传密钥**不写进代码与仓库**，只从环境变量 `POOL_UPLOAD_KEY` 或 `--key-file` 读；上传是显式动作，不随转录自动执行。用法与完整规则见该分支 `chickenrice/README.md` 的「字幕池上传」一节。已实测入池：ABF-395（2026-10-22，C2 配置生成）。
 
+### 完整示例：生成字幕并上传字幕池（生产实录）
+
+以「视频直链 → C2 配置生成中文字幕 → 上传字幕池」为例（脚本在 chickenrice 分支，仓库根目录执行；实录为番号 ABF-395、片长 2:14:25，生成约 8 分半）：
+
+```bash
+# 0) 前置：已装 colab CLI 并完成一次授权（见下方「快速开始」第 2 步）
+# 1) 开 T4 会话
+colab new -s purfview --gpu T4
+# 2) setup：只下海南鸡模型、关智能 VAD（C2 配置），并按直链下载视频
+colab exec -s purfview --timeout 3600 \
+  --env "INPUT_URL=https://example.com/video/114842" \
+  -f chickenrice/cr_setup_hj_nosmart.py
+# 3) 启动翻译（后台脱钩），轮询到 STATUS DONE
+colab exec -s purfview --timeout 120 --env "TASK=translate" -f chickenrice/cr_launch.py
+colab exec -s purfview --timeout 120 --env "TASK=translate" -f chickenrice/cr_poll.py
+# 4) 下载字幕（直接命名为 <番号>.zh.srt，下一步可自动识别番号），关会话
+colab download -s purfview /content/out_translate/114842.srt ABF-395.zh.srt
+colab stop -s purfview
+# 5) 上传字幕池（密钥只经环境变量或 --key-file 传入，不入库）
+POOL_UPLOAD_KEY=<上传密钥> python3 chickenrice/pool_upload.py ABF-395.zh.srt
+#    期望输出：created ABF-395.zh.srt（ABF-395）：HTTP 201 {...}
+python3 chickenrice/pool_upload.py --stats   # 验证池内总数 +1
+```
+
+说明：文件名含标准番号时自动提取，提不到用 `--code ABF-395` 显式指定；同一文件重复执行第 5 步会因 sha256 台账去重直接跳过；只想生成不上传，止于第 4 步即可。
+
 ## 为什么是这个组合
 
 - **Purfview XXL 赢在预设，不只是模型**：它的粗 VAD 长段（3 秒静音才切、0.9 秒留白、
