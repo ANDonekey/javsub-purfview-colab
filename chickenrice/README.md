@@ -14,6 +14,7 @@
 | `cr_launch.py` | 按 `TASK=translate\|transcribe` 环境变量脱钩启动 infer.py 后台进程，日志/标记在 `/content/out_<task>/`。输入文件可用 `INPUT_FILE` 指定（视频或音频均可，如 mp3/m4a/flac/wav），不指定时自动取 `/content/input/` 里的第一个文件；setup 脚本经 `INPUT_URL` 下载时按 URL 原名保存 |
 | `cr_poll.py` | 查看后台任务状态、日志尾部与产物 |
 | `compare.py` | 本地三方字幕量化对比工具（条数、时间轴覆盖、缺陷计数、指定时间窗抽查、关键术语计数） |
+| `pool_upload.py` | 本地工具：把生成的中文成品字幕上传到公共字幕池（见下方「字幕池上传」） |
 
 ## Colab 快速开始
 
@@ -32,6 +33,18 @@ colab stop -s purfview
 ```
 
 注：本路线不需要挂载 Google Drive（模型从 HuggingFace 现下、产物直接回传），省去每台新 VM 的 Drive 授权点击。
+
+### 字幕池上传
+
+生成的中文成品（海南鸡直出等）可上传到公共字幕池 `chickenrice-subtitle-pool.jzdxjk.workers.dev`（与 subtitle-modal-web 同一接口），供他人按番号检索复用：
+
+```bash
+POOL_UPLOAD_KEY=<上传密钥> python3 chickenrice/pool_upload.py --dir <字幕目录>
+python3 chickenrice/pool_upload.py --dry-run out/*.srt   # 只验过滤与去重，不上传
+python3 chickenrice/pool_upload.py --stats               # 查池内总数
+```
+
+规则与服务端一致并在本地先行过滤：仅 srt/ass/ssa、≤2MiB、合法 UTF-8、至少 1 个汉字、假名占比 >0.20 判为日文字幕跳过（双语稿也会被跳，池子只收纯中文成品）；番号从文件名提取（`ABC-123`、`FC2-1234567`、`abc123` 三种格式，提不到时用 `--code` 指定）；按内容 sha256 去重，台账在 `~/.chickenrice-pool-uploaded.json`。密钥只从环境变量或 `--key-file` 读，**不写进代码与仓库**；401/403 整批中止、429 停、410 跳过、5xx 重试 3 次。上传是显式动作，不随转录自动执行——介意公开分享就不要跑它。
 
 ### 直接喂音频
 
