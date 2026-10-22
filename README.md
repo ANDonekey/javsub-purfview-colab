@@ -20,6 +20,10 @@ XXL large-v2 在日语（JAV）素材上准确率与稳定性最好。
 
 选哪条：量大求快用 main；单片求准、或想要中文直出，用 chickenrice。切换分支：GitHub 页面左上角分支下拉，或 `git checkout chickenrice`。
 
+### 字幕池上传（chickenrice 分支）
+
+chickenrice 分支另带 `chickenrice/pool_upload.py`：把生成的**中文成品字幕**上传到公共字幕池 `chickenrice-subtitle-pool.jzdxjk.workers.dev`（与 subtitle-modal-web 同一接口），供他人按番号检索复用。特性：与服务端一致的本地预过滤（仅 srt/ass/ssa、≤2MiB、纯中文成品——日文字幕与双语稿都会跳过）、番号从文件名提取、按内容 sha256 去重（台账在本地，不重复传）、401/429/410/5xx 按接口规范处理。上传密钥**不写进代码与仓库**，只从环境变量 `POOL_UPLOAD_KEY` 或 `--key-file` 读；上传是显式动作，不随转录自动执行。用法与完整规则见该分支 `chickenrice/README.md` 的「字幕池上传」一节。已实测入池：ABF-395（2026-10-22，C2 配置生成）。
+
 ## 为什么是这个组合
 
 - **Purfview XXL 赢在预设，不只是模型**：它的粗 VAD 长段（3 秒静音才切、0.9 秒留白、
